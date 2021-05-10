@@ -4,9 +4,9 @@ import DictWithCrypto
 
 
 class Config:
-    API_KEY = 'vgf427OM0lgxnRs7flKdEW8oUrB1Bf7ww7sfZRFNbnJQTAVje4kuX6vUYy88bOXo'
+    API_KEY = ''
 
-    SECRET_KEY = 'RvAAGceEiuaWMdn0fX9SHdSc9A0gRy9uvbLth31JftvXarpQzLdrwi07UpbmsPJi'
+    SECRET_KEY = ''
 
 
 class CreateDeal:  # коды api, создаются в Config
