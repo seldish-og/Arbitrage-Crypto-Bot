@@ -1,107 +1,84 @@
 from binance.client import Client
 
-import DictWithCrypto
+import new_crypto_dict
+import rounds
 
 
 class Config:
-    API_KEY = ''
+    API_KEY = 'KEY'
 
-    SECRET_KEY = ''
+    SECRET_KEY = 'SecretKey'
 
 
-class CreateDeal:  # коды api, создаются в Config
+class CreateDeal:
     def __init__(self):
         self.client = Client(Config.API_KEY, Config.SECRET_KEY)
         self.prices = self.client.get_all_tickers()
 
-    def test_fees(self, symbol):
-        # get fees for all symbols
-        # fees = self.client.get_trade_fee()
-        # get fee for one symbol
-        fees = self.client.get_trade_fee(symbol=symbol)  # it works, idk is this right fees but seems to be right
-        return fees
-
-    def buy_market(self, symbol, q):
-        self.client.create_order(
-            symbol=symbol,  # crypto
-            side=Client.SIDE_BUY,  # SIDE_SELL продает
-            type=Client.ORDER_TYPE_MARKET,  # тип сделки
-            quantity=q)  # кол-во крипты
-        # order = self.client.order_market_buy(
-        #     symbol='BNBBTC',
-        #     quantity=100) # более простой способ не тестился(работает скорее всего)
-
-    def sell_market(self, symbol, q):
-        self.client.order_market_sell(
+    def buy_market(self, symbol, quantity):
+        o = self.client.create_order(
             symbol=symbol,
-            quantity=q)
+            side=Client.SIDE_BUY,
+            type=Client.ORDER_TYPE_MARKET,
+            quantity=quantity)
 
-    def get_list_prices(self, lenght, elements):  # work more or less fast
-        prices = list(map(lambda x: float(self.client.get_symbol_ticker(symbol=x)['price']) * (
-            float(self.client.get_symbol_ticker(symbol=(x[lenght:] + 'USDT'))['price']) if 'USDT' not in x else 1),
-                          elements))
+    def sell_market(self, symbol, quantity):
+        o = self.client.create_order(
+            symbol=symbol,
+            side=Client.SIDE_SELL,
+            type=Client.ORDER_TYPE_MARKET,
+            quantity=quantity)
+
+    # get_symbol_ticker('ETHUSDT') result: {'symbol': 'ETHUSDT', 'price': '3987.15000000'}
+    # float(self.client.get_symbol_ticker(symbol=(x[lenght:] + 'USDT'))['price']) # getting price in USDT
+    def get_list_prices(self, lenght, elements):
+        prices = list(map(
+            lambda x: float(self.client.get_symbol_ticker(symbol=x[0])['price']) * (float(
+                self.client.get_symbol_ticker(symbol=(x[0][lenght:] + 'USDT'))['price']) if 'USDT' not in x[0] else 1),
+            elements))
         return prices  # return list with prices(in $)
 
+        # (float(self.client.get_symbol_ticker(symbol=(x[0][lenght:] + 'USDT'))['price']) if 'USDT' not in x else 1)
 
-# print(x.get_one_price('ETHUSDT'))
-# x.test_fees()
-# x.buy_market()
-# x.buy_limit()
-# x.sell_market()
-# x.sell_limit()
-# x.analyzer()
-my_class = CreateDeal()
+    def get_one_price(self, symbol):
+        price = self.client.get_symbol_ticker(symbol=symbol)
+        return float(price['price'])
+
+
+main_class = CreateDeal()
 
 
 def analyzer():
-    arr = DictWithCrypto.crypto
-    ex = []
+    arr = new_crypto_dict.crypto
+
     for i in arr:
-        prs = my_class.get_list_prices(len(i), arr[i])
-        if (((110 / min(prs)) * max(prs)) - 110) > 1:  # check it, working but check it
-            print(((110 / min(prs)) * max(prs)) - 110)
-            print(arr[i][prs.index(min(prs))])  # use this indices in buying/selling
-            # print(arr[i][prs.index(max(prs))])
-            # write functions to convert money before buying or after, and connect buy/sell methods with main function
-    print(ex)
+        prs = main_class.get_list_prices(len(i), arr[i])  # list with prices in USDT
 
+        quantity = round((110 / min(prs)), arr[i][prs.index(min(prs))][1])
+        if ((quantity * max(prs)) - (quantity * min(prs))) > 1.5:  # change to 1 1.5 or 2
+            symb_min = arr[i][prs.index(min(prs))]
+            symb_max = arr[i][prs.index(max(prs))]
+            if "USDT" not in symb_min[0]:
+                print((quantity * max(prs)) - (quantity * min(prs)))
+                print(symb_min)
+                print(symb_max)
+                symbol_usdt = symb_min[0][len(i):] + 'USDT'
+                quantity_usdt = round((110 / main_class.get_one_price(symb_min[0][len(i):] + 'USDT')),
+                                      rounds.round_usdt[symb_min[0][len(i):]])
+                main_class.buy_market(symbol_usdt, quantity_usdt)
+                main_class.buy_market(symb_min[0], quantity)
+                main_class.sell_market(symb_max[0], quantity)
+                main_class.sell_market(symbol_usdt, quantity_usdt)
+                # print(arr[i][prs.index(min(prs))][len(i):] + 'USDT', quantity)
+                # print(arr[i][prs.index(min(prs))], quantity)
+                # print(arr[i][prs.index(max(prs))], quantity)
+            else:
+                print(arr[i][prs.index(min(prs))])
+                print(arr[i][prs.index(max(prs))])
+                print(((110 / min(prs)) * max(prs)) - 110)
+                main_class.buy_market(arr[i][prs.index(min(prs))], quantity)
+                main_class.sell_market(arr[i][prs.index(max(prs))], quantity)
+                # print(arr[i][prs.index(min(prs))], q)
+                # print(arr[i][prs.index(max(prs))], q)
 
-analyzer()
-
-# '''example (buy_price=1865, sel_price=1880)'''
-# '''1 - 1865$'''
-# '''x - 110$'''
-# '''x = 110/1865 = 0.05898123 (coins quantity) '''
-# '''1 - 1880 $'''
-# '''0.05898123 - x $'''
-# '''0.05898123 * 1880 = 110.884718 (sell)'''
-# # result
-# '''110.884718 - 110 = 0.884718 - 0,03(2 fees(buy, sell and convert back to USDT or another stablecoin))
-#  = 0.854718 profit'''
-# # this is the main meaning of the algorithm, need to be optimized for bot, maybe work with %
-
-
-# not needed yet
-# def buy_limit(self):
-#     order = self.client.create_order(
-#         symbol=Config.SYMBOL,
-#         side=Client.SIDE_BUY,
-#         type=Client.ORDER_TYPE_LIMIT,
-#         timeInForce=TIME_IN_FORCE_GTC,  # обязательный параметр ниже ссылка, там подробно об этом параметре написано
-#         # https://duedex.zendesk.com/hc/en-us/articles/360035661474-Time-In-Force-GTC-IOC-FOK-
-#         quantity=2,
-#         price=9,
-#         recvWindow=5000,
-#         # связанна с временем сервера и временем запроса скрипта, о конца не понял но без нее не работает
-#         timestamp=1499827319559)  # хз что-это, без этого параметра работает
-
-
-# not needed yet
-# def sell_limit(self):
-#     order = self.client.create_order(
-#         symbol=Config.SYMBOL,
-#         type=Client.ORDER_TYPE_LIMIT,
-#         side=SIDE_SELL,
-#         timeInForce=TIME_IN_FORCE_GTC,
-#         quantity=8,
-#         price='1.9')
+    print(0)
